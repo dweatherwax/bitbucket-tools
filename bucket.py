@@ -86,7 +86,7 @@ def sortPRList(prList):
 
 if __name__ == "__main__":
     auth = HTTPBasicAuth('user', 'pass')
-    base = 'http://git.levant.local/rest/api/1.0/'
+    base = 'http://url/rest/api/1.0/'
 
     print "Gathering data from the heavens. . .",
     sys.stdout.flush()
