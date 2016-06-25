@@ -1,6 +1,7 @@
 import requests
 import sys
 import time
+from optparse import OptionParser
 
 from requests.auth import HTTPBasicAuth
 from requests.auth import HTTPDigestAuth
@@ -85,8 +86,17 @@ def sortPRList(prList):
      
 
 if __name__ == "__main__":
-    auth = HTTPBasicAuth('user', 'pass')
-    base = 'http://url/rest/api/1.0/'
+    auth_user = None
+    auth_password = None
+    
+    parser = OptionParser()
+    parser.add_option("-u", "--user", dest='auth_user', help="user name")
+    parser.add_option("-p", "--pass", dest='auth_password', help="password")
+    parser.add_option("-a", "--address", dest='url', help='stash base url')
+    (options, args) = parser.parse_args()
+
+    auth = HTTPBasicAuth(options.auth_user, options.auth_password)
+    base = 'http://'+options.url+'/rest/api/1.0/'
 
     print "Gathering data from the heavens. . .",
     sys.stdout.flush()
