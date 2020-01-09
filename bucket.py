@@ -2,6 +2,7 @@ import requests
 import sys
 import time
 from optparse import OptionParser
+import datetime
 
 from requests.auth import HTTPBasicAuth
 from requests.auth import HTTPDigestAuth
@@ -10,7 +11,8 @@ from requests.auth import HTTPDigestAuth
 def getProjectList(baseUrl, auth):
     ''' Return list of project names '''
     r = requests.get(baseUrl+'projects/', auth=auth)
-
+    print baseUrl
+    print r
     projectList = []
     for project in r.json()['values']:
         projectList.append(project['key'])
@@ -22,29 +24,55 @@ def getRepoList(baseUrl, auth, projectList):
         those projects 
     '''
     repoList = []
-
+    
     for project in projectList:
-        r = requests.get(baseUrl+'projects/'+project+'/repos/', auth=auth)
-        for repo in r.json()['values']:
-            repoList.append((project, repo['slug']))
+        start = 0
+        lastPage = False
+
+        while not lastPage:
+            url = baseUrl+'projects/'+project+'/repos/'+'?start=' + str(start)
+            r = requests.get(url, auth=auth)
+            response = r.json()
+
+            lastPage = response['isLastPage']
+            if response.has_key('nextPageStart'):
+                start = response['nextPageStart']
+        
+            for repo in response['values']:
+                print "adding repo ", repo['slug']
+                repoList.append((project, repo['slug']))
 
     return repoList
-        
+
 
 def getPullRequests(baseUrl, auth, slugList):
     ''' Given a set of project/slug names, return the list of active pull requests '''
 
     prList = []
-    
+    #prState = 'MERGED'
+    prState = 'OPEN'
+
     for (projectName, repoName) in slugList:
         print ".",
         sys.stdout.flush()
 
-        url = baseUrl+'projects/'+projectName+'/repos/'+repoName+'/pull-requests'
-        r = requests.get(url, auth=auth)
-        for pr in r.json()['values']:
-            prList.append(pr)
-            
+        start = 0
+        lastPage = False
+
+        while not lastPage:
+            url = baseUrl+'projects/'+projectName+'/repos/'+repoName+'/pull-requests?state='+prState+'&start=' + str(start)
+            r = requests.get(url, auth=auth)
+
+            response = r.json()
+            lastPage = response['isLastPage']
+            if response.has_key('nextPageStart'):
+                start = response['nextPageStart']
+
+            for pr in response['values']:
+                #closedDate = pr['closedDate'] / 1000.0
+                prList.append(pr)
+                #print time.ctime(closedDate), "     ", pr['author']['user']['displayName'], "     ", pr['title']
+                
     return prList
 
 def printPRTable(pullRequests):
@@ -52,8 +80,8 @@ def printPRTable(pullRequests):
 
     print '%10s' % "Author",
     print '( c,  o,  r)',
-    print '%-13s' % "Updated",
-    print '%-40s' % "Title",
+    print '%-20s' % "Updated",
+    print '%-50s' % "Title",
     print '%-20s' % "Link"
     
     for pr in pullRequests:
@@ -77,7 +105,7 @@ def printPRTable(pullRequests):
         print '%10s' % author,
         print '(%2s, %2s, %2s) ' % (comments, openTaskCount, resolvedTaskCount),
         print updated, 
-        print '%-40s' % title[0:40],
+        print '%-50s' % title[0:40],
         print link
 
 def sortPRList(prList):
@@ -96,7 +124,7 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
 
     auth = HTTPBasicAuth(options.auth_user, options.auth_password)
-    base = 'http://'+options.url+'/rest/api/1.0/'
+    base = 'https://'+options.url+'/rest/api/1.0/'
 
     print "Gathering data from the heavens. . .",
     sys.stdout.flush()
@@ -116,4 +144,5 @@ if __name__ == "__main__":
     sortedPullRequests = sortPRList(pullRequests)
     printPRTable(sortedPullRequests)
 
+    
     
